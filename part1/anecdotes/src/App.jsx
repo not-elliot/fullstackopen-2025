@@ -33,7 +33,7 @@ const App = () => {
   const returnMaxVal = (arr) => {
     return [...arr].sort((a, b) => b-a)[0]
   }
-
+    
   return (
     <div>
       <h1>Anecdote of the day</h1>
