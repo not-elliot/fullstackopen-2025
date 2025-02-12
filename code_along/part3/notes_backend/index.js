@@ -3,6 +3,12 @@ const cors = require('cors')
 const express = require('express')
 const app = express()
 
+// models
+const Note = require('./models/note')
+
+// vars
+const PORT = process.env.PORT || 3001
+
 let notes = [
     {
         id: "1",
@@ -39,6 +45,14 @@ const unknownEndpoint = (req, res) => {
     })
 }
 
+// database test
+Note.find({}).then(notes => {
+    console.log('mongoose notes:')
+    notes.forEach(note => console.log(note.content, ' - ', note.important))
+    // mongoose.connection.close()
+})
+
+// alternative simple server w/o express
 // const app = http.createServer((request, response) => {
 //     response.writeHead(200, { 'Content-Type': 'application/json' })
 //     response.end(JSON.stringify(notes))
@@ -53,7 +67,10 @@ app.use(express.static('dist'))
 
 app.get('/', (req, res) => res.send('<h1>Hello World!</h1>'))
 
-app.get('/api/notes', (req, res) => res.json(notes))
+app.get('/api/notes', (req, res) => {
+    const notesFromDB = Note.find({}).then(notes => res.json(notes))
+    // res.json(notes)
+})
 app.get('/api/notes/:id', (req, res) => {
     const id = req.params.id
     const note = notes.find(note => note.id === id)
@@ -99,6 +116,4 @@ app.delete('/api/notes/:id', (req, res) => {
 // outgoing middleware
 app.use(unknownEndpoint)
 
-const PORT = process.env.PORT || 3001
-app.listen(PORT)
-console.log(`Server running on port ${PORT}`);
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
