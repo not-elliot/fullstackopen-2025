@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "dev": "node --watch . index.js",
+    "dev": "node --env-file .env --watch . index.js",
     "build:ui": "rm -rf dist && cd ../phonebook_frontend && npm run build && cp -r dist ../phonebook_backend",
     "deploy:full": "npm run build:ui && git add . && git commit -m phonebook_uibuild && git push"
   },
