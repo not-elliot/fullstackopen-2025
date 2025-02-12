@@ -50,6 +50,16 @@ const PORT = process.env.PORT || 3001
 // ]
 
 // functions
+const errorHandler = (error, req, res, next) => {
+    console.error(error.message)
+    
+    switch(error.name) {
+        case "CastError":
+            res.status(400).send({ error: "malformed id" })
+            break
+        default: next(error)
+    }
+}
 
 // const generateId = () => {
 //     return String(Math.floor(Math.random() * 10000000))
@@ -65,15 +75,21 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :b
 
 // routes
 app.get('/info', (req, res) => {
-    res.send(`
-        Phonebook has info for ${persons.length} people
-        <br />
-        <br />
-        ${new Date(Date.now())}    
-    `)
+    Person
+        .find({})
+        .then(persons => {
+            console.log('number of persons in phonebook:', persons.length)
+            res.send(`
+                Phonebook has info for ${persons.length} people
+                <br />
+                <br />
+                ${new Date(Date.now())}    
+            `)
+        })
+        .catch(err => next(err))
 })
 
-app.get('/api/persons', (req, res) => {
+app.get('/api/persons', (req, res, next) => {
     // res.json(persons)
 
     Person
@@ -84,10 +100,10 @@ app.get('/api/persons', (req, res) => {
             if(!allPersons) return res.status(404).json({ error: '404 - nothing found' })
             res.json(allPersons)
         })
-        .catch(err => res.status(500).json({ error: '500 - something went wrong' }))
+        .catch(err => next(err))
 })
 
-app.get('/api/persons/:id', (req, res) => {
+app.get('/api/persons/:id', (req, res, next) => {
     const id = req.params.id
     // const person = persons.find(person => person.id === id)
     // if(!person) return res.status(404).end()
@@ -100,10 +116,10 @@ app.get('/api/persons/:id', (req, res) => {
             if(!returnedPerson) return res.status(404).json({ error: '404 - nothing found' })
             res.json(returnedPerson)
         })
-        .catch(err => res.status(500).json({ error: '500 - something went wrong' }))
+        .catch(err => next(err))
 })
 
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
     const body = req.body
     
     if(!body.name || !body.number) {
@@ -148,26 +164,54 @@ app.post('/api/persons', (req, res) => {
                         console.log("savedPerson:", savedPerson)
                         res.json(savedPerson)
                     })
-                    .catch(err => res.status(500).json({ error: "500 - something went wrong" }))
+                    .catch(err => next(err))
             }
         })
-        .catch(err => res.status(500).json({ error: "500 - something went wrong "}))
+        .catch(err => next(err))
 })
+app.put('/api/persons/:id', (req, res, next) => {
+    const { id } = req.params
+    const { name, number } = req.body
 
-app.delete('/api/persons/:id', (req, res) => {
+    if(!name || !number) {
+        return res.status(400).json({ error: "400 - name or number missing" })
+    }
+
+    const personToUpdate = {
+        name,
+        number
+    }
+
+    Person
+        .findByIdAndUpdate(id, personToUpdate, { new: true })
+        .then(updatedPerson => {
+            console.log('updatedPerson:', updatedPerson)
+            res.json(updatedPerson)
+        })
+        .catch(err => next(err))
+})
+app.delete('/api/persons/:id', (req, res, next) => {
     const id = req.params.id
     // const person = persons.find(person => person.id === id)
     // console.log('person being deleted:', person)    
     // persons = persons.filter(person => person.id !== id)
     // res.status(204).end()
     Person
-        .deleteOne(new mongoose.Types.ObjectId(id))
+        .findByIdAndDelete(id)
         .then(deleteInfos => {
             console.log('deleteInfos:', deleteInfos)
             res.status(204).end()
         })
-        .catch(err => res.status(500).json({ error: "500 - something went wrong" }))
+        .catch(err => next(err))
 })
+
+// handle unknown routes
+app.use((req, res, next) => {
+    res.status(404).send({ error: 'unknown endpoint' })
+})
+
+// handle all errors
+app.use(errorHandler)
 
 // start server
 app.listen(PORT, () => console.log(`SERVER RUNNING ON PORT ${PORT}`))
