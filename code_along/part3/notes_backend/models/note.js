@@ -15,27 +15,38 @@ mongoose.set('strictQuery', false)
 
 // connect to db
 mongoose
-    .connect(url)
-    .then(res => {
-        console.log('connected to MongoDB')
-    })
-    .catch(err => {
-        console.log('error connection to MongoDB:', err.message)        
-    })
+  .connect(url)
+  .then(() => {
+    console.log('connected to MongoDB')
+  })
+  .catch(err => {
+    console.log('error connection to MongoDB:', err.message)
+  })
 
 // create schema for notes
+// simple
+// const noteSchema = mongoose.Schema({
+//     content: String,
+//     important: Boolean
+// })
+
+// with validation
 const noteSchema = mongoose.Schema({
-    content: String,
-    important: Boolean
+  content: {
+    type: String,
+    minLength: 5,
+    required: true
+  },
+  important: Boolean
 })
 
 // setup returned JSON object -> delete versioning and convert id to string
 noteSchema.set('toJSON', {
-    transform: (document, returnedObnject) => {
-        returnedObnject.id = returnedObnject._id.toString()
-        delete returnedObnject._id
-        delete returnedObnject.__v
-    }
+  transform: (document, returnedObnject) => {
+    returnedObnject.id = returnedObnject._id.toString()
+    delete returnedObnject._id
+    delete returnedObnject.__v
+  }
 })
 
 // create model for a note

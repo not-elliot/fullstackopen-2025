@@ -1,4 +1,4 @@
-import { useState,useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import personsService from './services/persons'
 
 const Notification = ({ msgObj }) => {
@@ -87,20 +87,49 @@ const App = () => {
   const [newPhone, setNewPhone] = useState('')
   const [filterValue, setFilterValue] = useState('')
   const [msgObj, setMsgObj] = useState(null)
+  
+  // persistent between renders
+  const timerId = useRef(null);
+  const startTimeRef = useRef(null);           
+  const totalDisplayedTimeRef = useRef(0); 
 
   useEffect(() => {
     personsService
       .getAll()
-      .then(initialPersons => setPersons(initialPersons))
+      .then(initialPersons => setPersons(initialPersons.concat({ name: "fake boy", number: "0190-66666"})))
       .catch(err => console.log(err.name, "-", err.code, ":", err.message, "_", "FAILED TO GET DATA FROM DB"))
   }, [])
 
   const updateNotification = (msgObj) => {
     setMsgObj(msgObj)
-    setTimeout(() => {
-      setMsgObj(null)
-    }, 5000)
-  }  
+
+    // Startzeitpunkt erfassen
+    if (msgObj && !startTimeRef.current) {
+      startTimeRef.current = Date.now();
+    }
+
+    // Falls bereits ein Timer läuft, diesen abbrechen
+    if (timerId.current) {
+      clearTimeout(timerId.current);
+    }
+
+    // Starte einen neuen Timer (hier z.B. 5000ms)
+    timerId.current = setTimeout(() => {
+      // Berechne die Zeit, die die Nachricht angezeigt wurde
+      if (startTimeRef.current) {
+        const elapsed = Date.now() - startTimeRef.current;
+        totalDisplayedTimeRef.current += elapsed;
+        console.log(`the message was ${totalDisplayedTimeRef.current} ms visible`);
+        // Reset der Startzeit
+        startTimeRef.current = null;
+      }
+      // Blende die Nachricht aus
+      setMsgObj(null);
+      timerId.current = null;
+    }, 6000);
+  };
+
+  console.log('show persons loaded in frontend:', persons)
 
   const handleSubmit = (e) => {
     console.log(e)
@@ -120,11 +149,15 @@ const App = () => {
           .then(returnedPerson => {
             console.log('updated person:', returnedPerson)            
             setPersons(persons.map(person => person.id === returnedPerson.id ? returnedPerson : person))
+            setNewName('')
+            setNewPhone('')
+            updateNotification({ msg: `Updated ${existingPerson.name}'s number`, type: 'success' })
           })
-          .catch(err => console.log(err.name, "-", err.code, ":", err.message, "_", "FAILED TO UPDATE DATA IN DB"))
-        
-        setNewName('')
-        setNewPhone('')
+          .catch(err => {
+            console.error(err.name, "-", err.code, ":", err.message, "_", "FAILED TO UPDATE DATA IN DB")
+            console.error(err.response.data.error)
+            updateNotification({ msg: `Failed to update ${existingPerson.name} - ${err.response.data.error}`, type: 'error' })
+          })
         return
       } else {
         setNewName('')
@@ -149,7 +182,11 @@ const App = () => {
         updateNotification({ msg: `Added ${returnedPerson.name}`, type: 'success' })
 
       })
-      .catch(err => console.log(err.name, "-", err.code, ":", err.message, "_", "FAILED TO POST DATA TO DB"))
+      .catch(err => {
+        console.error(err.name, "-", err.code, ":", err.message, "_", "FAILED TO POST DATA TO DB")
+        console.error(err.response.data.error)
+        updateNotification({ msg: `Failed to add ${newPerson.name} - ${err.response.data.error}`, type: 'error' })
+      })
   }
 
   const handleRemove = (personId) => {
@@ -164,8 +201,9 @@ const App = () => {
       })
       .catch(err => {
         const errorPerson = persons.find(person => person.id === personId)
-        console.log(err.name, "-", err.code, ":", err.message, "_", "FAILED TO DELETE DATA FROM DB")
-        updateNotification({ msg: `Information for person ${errorPerson.name} has already been removed from server`, type: 'error' })
+        console.error(err.name, "-", err.code, ":", err.message, "_", "FAILED TO DELETE DATA FROM DB")
+        console.error(err.response.data.error)
+        updateNotification({ msg: `Information for person ${errorPerson.name} has already been removed from server - ${err.response.data.error}`, type: 'error' })
         setPersons(persons.filter(person => person.id !== personId))
       })
 

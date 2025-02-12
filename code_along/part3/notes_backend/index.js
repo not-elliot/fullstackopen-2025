@@ -1,12 +1,11 @@
-const http = require('http')
+// const http = require('http')
 const cors = require('cors')
-const mongoose = require('mongoose')
+// const mongoose = require('mongoose')
 const express = require('express')
 const app = express()
 
 // models
 const Note = require('./models/note')
-const { getSystemErrorMap } = require('util')
 
 // vars
 const PORT = process.env.PORT || 3001
@@ -28,36 +27,42 @@ const PORT = process.env.PORT || 3001
 // ]
 
 // functions
-const generateId = () => {
-    const maxId = notes.length > 0 ? Math.max(...notes.map(n => Number(n.id))) : 0
-    return String(maxId + 1)
-}
-
 const  errorHandler = (error, req, res, next) => {
-    console.error(error.message)
-    if(error.name === 'CastError') return res.status(400).send({ error: 'malformatted id' })
-    next(error)
+  console.error(error.message)
+
+  switch(error.name) {
+  case 'CastError':
+    return res.status(400).send({ error: 'malformatted id' })
+  case 'ValidationError':
+    return res.status(400).json({ error: error.message })
+  default: next(error)
+  }
 }
 
 const requestLogger = (req, res, next) => {
-    console.log(`Method: ${req.method}`)
-    console.log(`Path: ${req.path}`)
-    console.log(`Body:`, req.body)
-    console.log(`---`)
-    next()
+  console.log(`Method: ${req.method}`)
+  console.log(`Path: ${req.path}`)
+  console.log('Body:', req.body)
+  console.log('---')
+  next()
 }
 
 const unknownEndpoint = (req, res) => {
-    res.status(404).send({
-        error: "unknown endpoint"
-    })
+  res.status(404).send({
+    error: 'unknown endpoint'
+  })
 }
+
+// const generateId = () => {
+//     const maxId = notes.length > 0 ? Math.max(...notes.map(n => Number(n.id))) : 0
+//     return String(maxId + 1)
+// }
 
 // database test
 Note.find({}).then(notes => {
-    console.log('mongoose notes:')
-    notes.forEach(note => console.log(note.content, ' - ', note.important))
-    // mongoose.connection.close()
+  console.log('mongoose notes:')
+  notes.forEach(note => console.log(note.content, ' - ', note.important))
+  // mongoose.connection.close()
 })
 
 // alternative simple server w/o express
@@ -75,109 +80,107 @@ app.use(requestLogger)
 
 app.get('/', (req, res) => res.send('<h1>Hello World!</h1>'))
 
-app.get('/api/notes', (req, res) => {
-    // res.json(notes)
+app.get('/api/notes', (req, res, next) => {
+  // res.json(notes)
 
-    const notesFromDB = Note
-                        .find({})
-                        .then(notes => res.json(notes))
-                        .catch(err => res.status(500).json({
-                            error: '500 - something went wrong'
-                        }))
+  Note
+    .find({})
+    .then(notes => res.json(notes))
+    .catch(err => next(err))
 })
 app.get('/api/notes/:id', (req, res, next) => {
-    const id = req.params.id
-    // const note = notes.find(note => note.id === id)
+  const id = req.params.id
+  // const note = notes.find(note => note.id === id)
 
-    // if(note) {
-    //     res.json(note)
-    // } else {
-    //     res.status(404).end()
-    // }
+  // if(note) {
+  //     res.json(note)
+  // } else {
+  //     res.status(404).end()
+  // }
 
-    // if(!note) return res.status(404).end()
-    
-    // res.json(note)
+  // if(!note) return res.status(404).end()
 
-    Note
-        .findById(id)
-        .then(note => {
-            if(!note) return res.status(404).end()
-            res.json(note)
-        })
-        .catch(err => next(err))
-})
-app.post('/api/notes', (req, res) => {
-    const body = req.body
+  // res.json(note)
 
-    if(body.content === undefined) {
-        return res.status(400).json({
-            error: 'content missing'
-        })
-    }
-
-    // const note = {
-    //     content: body.content,
-    //     important: Boolean(body.important) || false,
-    //     id: generateId()
-    // }
-
-    // notes = notes.concat(note)
-    // res.json(note) 
-    
-    const note = new Note({
-        content: body.content,
-        important: Boolean(body.important) || false
+  Note
+    .findById(id)
+    .then(note => {
+      if(!note) return res.status(404).end()
+      res.json(note)
     })
+    .catch(err => next(err))
+})
+app.post('/api/notes', (req, res, next) => {
+  const body = req.body
 
-    note
-        .save()
-        .then(savedNote => {
-            // here are _id and __v still existent
-            console.log('savedNote:', savedNote)
-            // here .toJSON will be used to get rid of _id and __v
-            res.json(savedNote)
-        })
-        .catch(err => res.status(500).json({
-            error: '500 - something went wrong'
-        }))   
+  // // needed when there is no mongoose validation
+  // if(body.content === undefined) {
+  //     return res.status(400).json({
+  //         error: 'content missing'
+  //     })
+  // }
+
+  // const note = {
+  //     content: body.content,
+  //     important: Boolean(body.important) || false,
+  //     id: generateId()
+  // }
+
+  // notes = notes.concat(note)
+  // res.json(note)
+
+  const note = new Note({
+    content: body.content,
+    important: Boolean(body.important) || false
+  })
+
+  note
+    .save()
+    .then(savedNote => {
+      // here are _id and __v still existent
+      console.log('savedNote:', savedNote)
+      // here .toJSON will be used to get rid of _id and __v
+      res.json(savedNote)
+    })
+    .catch(err => next(err))
 })
 app.put('/api/notes/:id', (req, res, next) => {
-    const { id } = req.params
-    const body = req.body
+  const { id } = req.params
+  const { content, important } = req.body
 
-    const note = {
-        content: body.content,
-        important: body.important,
-    }
+  const note = {
+    content,
+    important,
+  }
 
-    Note
-        .findByIdAndUpdate(id, note, { new: true })
-        .then(updatedNote => {
-            res.json(updatedNote)
-        })
-        .catch(err => next(err))
+  // validations are not run by default when findOneAndUpdate and related methods are executed -> add runValidators: true, context: 'query' to options
+  Note
+    .findByIdAndUpdate(id, note, { new: true, runValidators: true, context: 'query' })
+    .then(updatedNote => {
+      res.json(updatedNote)
+    })
+    .catch(err => next(err))
 })
 app.delete('/api/notes/:id', (req, res, next) => {
-    const id = req.params.id
-    // notes = notes.filter(note => note.id !== id)
-    // res.status(204).end()
+  const id = req.params.id
+  // notes = notes.filter(note => note.id !== id)
+  // res.status(204).end()
 
-    // Note
-    //     .deleteOne(new mongoose.Types.ObjectId(id))
-    //     .then(deletedNote => {
-    //         console.log('deletedNote:', deletedNote)
-    //         res.status(204).end()        
-    //     })
-    //     .catch(err => res.status(500).json({
-    //         error: '500 - something went wrong'
-    //     }))
+  // Note
+  //     .deleteOne(new mongoose.Types.ObjectId(id))
+  //     .then(deletedNote => {
+  //         console.log('deletedNote:', deletedNote)
+  //         res.status(204).end()
+  //     })
+  //     .catch(err => res.status(500).json({
+  //         error: '500 - something went wrong'
+  //     }))
 
-    Note
+  Note
     .findByIdAndDelete(id)
     .then(deletionInfo => {
-        console.log('deletionInfo:', deletionInfo)
-        res.status(204).end()
+      console.log('deletionInfo:', deletionInfo)
+      res.status(204).end()
     })
     .catch(err => next(err))
 })
