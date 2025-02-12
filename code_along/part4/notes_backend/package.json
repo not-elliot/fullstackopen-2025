@@ -1,0 +1,28 @@
+{
+  "name": "backend",
+  "version": "0.0.1",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "node --env-file .env --watch . index.js",
+    "build:ui": "rm -rf dist && cd ../notes_frontend && npm run build && cp -r dist ../notes_backend",
+    "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push",
+    "lint": "eslint ."
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "mongodb": "^6.13.0",
+    "mongoose": "^8.10.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@stylistic/eslint-plugin-js": "^3.1.0",
+    "eslint": "^9.20.1",
+    "globals": "^15.15.0"
+  }
+}
