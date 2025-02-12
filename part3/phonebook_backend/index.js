@@ -1,7 +1,7 @@
 // npm modules import
 const morgan = require('morgan')
 const cors = require('cors')
-// const mongoose = require('mongoose')
+const mongoose = require('mongoose')
 const express = require('express')
 
 // my modules import
@@ -49,6 +49,21 @@ const PORT = process.env.PORT || 3001
 //     }
 // ]
 
+// database
+const SCHEME    = String(process.env.MONGO_SCHEME)
+const USER      = encodeURIComponent(process.env.MONGO_USER)
+const PW        = encodeURIComponent(process.env.MONGO_PW)
+const URL       = String(process.env.MONGO_URL)
+const DB        = String(process.env.MONGO_DB)
+const PARAMS    = String(process.env.MONGO_PARAMS)
+
+const url = `${SCHEME}://${USER}:${PW}@${URL}/${DB}?${PARAMS}`
+
+mongoose
+  .connect(url)
+  .then(() => console.log('connected to MongoDB'))
+  .catch(err => console.log('error connecting to MongoDB:', err.message))
+
 // functions
 const errorHandler = (error, req, res, next) => {
   console.error(error.message)
@@ -67,25 +82,20 @@ const errorHandler = (error, req, res, next) => {
 // }
 
 // incoming middleware
-app.use(cors())
-app.use(express.static('dist'))
-app.use(express.json())
 // app.use(morgan('tiny'))
 morgan.token('body', function(req) { return JSON.stringify(req.body) })
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
+app.use(express.static('dist'))
+app.use(express.json())
+app.use(cors())
 
 // routes
 app.get('/info', (req, res, next) => {
   Person
-    .find({})
-    .then(persons => {
-      console.log('number of persons in phonebook:', persons.length)
-      res.send(`
-                Phonebook has info for ${persons.length} people
-                <br />
-                <br />
-                ${new Date(Date.now())}    
-            `)
+    .countDocuments()
+    .then(count => {
+      console.log('number of persons in phonebook:', count)
+      res.send(`<p>Phonebook has info for ${count} people</p><p>${new Date(Date.now())}</p>`)
     })
     .catch(err => next(err))
 })
