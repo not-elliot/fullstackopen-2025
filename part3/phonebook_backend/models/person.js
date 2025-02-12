@@ -15,8 +15,26 @@ mongoose
     .catch(err => console.log('error connecting to MongoDB:', err.message))
 
 const personSchema = mongoose.Schema({
-    name: String,
-    number: String
+    name: {
+        type: String,
+        minLength: [3, "too short (needs at least 3 characters)"],
+        required: [true, "required"]
+    },
+    number: {
+        type: String,
+        minLength: [8, "too short (needs at least 8 characters)"],
+        required: [true, "required"],
+        validate: {
+            validator: (val) => {
+
+                const isValid = /^\d{2,4}-\d+$/.test(val)
+                return isValid
+            },
+            message: function(props) {
+                return `${props.value} has the wrong format - format needs to be: \d{2,4}-\d+`
+            }
+        }
+    }
 })
 
 personSchema.set('toJSON', {

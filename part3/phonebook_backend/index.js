@@ -55,8 +55,9 @@ const errorHandler = (error, req, res, next) => {
     
     switch(error.name) {
         case "CastError":
-            res.status(400).send({ error: "malformed id" })
-            break
+            return res.status(400).send({ error: "malformed id" })
+        case "ValidationError":
+            return res.status(400).json({ error: error.message })
         default: next(error)
     }
 }
@@ -120,11 +121,11 @@ app.get('/api/persons/:id', (req, res, next) => {
 })
 
 app.post('/api/persons', (req, res, next) => {
-    const body = req.body
+    // const body = req.body
     
-    if(!body.name || !body.number) {
-        return res.status(400).json({ error: "400 - name or number missing" })
-    }
+    // if(!body.name || !body.number) {
+    //     return res.status(400).json({ error: "400 - name or number missing" })
+    // }
 
     // if(persons.find(person => person.name === body.name)) {
     //     return res.status(409).json({
@@ -142,9 +143,11 @@ app.post('/api/persons', (req, res, next) => {
 
     // res.json(newPerson)
 
+    const { name, number } = req.body
+
     // check if person already exists
     Person
-        .findOne({ name: body.name })
+        .findOne({ name })
         .then(returnedPerson => {
             console.log("returnedPerson:", returnedPerson)
             // if person exists send error
@@ -154,8 +157,8 @@ app.post('/api/persons', (req, res, next) => {
             // else create new person and save
             } else {
                 const newPerson = new Person({
-                    name: body.name,
-                    number: body.number
+                    name,
+                    number
                 })
             
                 newPerson
@@ -183,7 +186,7 @@ app.put('/api/persons/:id', (req, res, next) => {
     }
 
     Person
-        .findByIdAndUpdate(id, personToUpdate, { new: true })
+        .findByIdAndUpdate(id, personToUpdate, { new: true, runValidators: true, context: 'query' })
         .then(updatedPerson => {
             console.log('updatedPerson:', updatedPerson)
             res.json(updatedPerson)
