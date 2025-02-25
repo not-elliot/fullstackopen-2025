@@ -13,3 +13,4 @@
 
 ## Time
 - part4 exercise 4.1 & 4.2: 2h
+- part4 exercise 4.3.-4.7.: 1,5h
