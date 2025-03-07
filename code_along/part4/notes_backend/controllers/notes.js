@@ -15,45 +15,53 @@ Note.find({}).then(notes => {
 })
 
 // routes
-notesRouter.get('/', (req, res, next) => {
-  Note
-    .find({})
-    .then(notes => res.json(notes))
-    .catch(err => next(err))
+// // without express-async-errors npm package we need the try catch block:
+// notesRouter.get('/', async (req, res, next) => {
+//   try {
+//     const notes = await Note.find({})
+//     res.json(notes)
+//   } catch(err) {
+//     next(err)
+//   }
+// })
+
+// routes when using npm package express-async-errors
+notesRouter.get('/', async (req, res) => {
+  const notes = await Note.find({})
+  res.json(notes)
 })
 
-notesRouter.get('/:id', (req, res, next) => {
+notesRouter.get('/:id', async (req, res) => {
   const id = req.params.id
 
-  Note
-    .findById(id)
-    .then(note => {
-      if(!note) return res.status(404).end()
-      res.json(note)
-    })
-    .catch(err => next(err))
+  const note = await Note.findById(id)
+
+  if(note) {
+    return res.json(note)
+  }
+  else {
+    return res.status(404).end()
+  }
 })
 
-notesRouter.post('/', (req, res, next) => {
+notesRouter.post('/', async (req, res) => {
   const body = req.body
 
   const note = new Note({
     content: body.content,
-    important: Boolean(body.important) || false
+    important: body.important || false
   })
 
-  note
-    .save()
-    .then(savedNote => {
-      // here are _id and __v still existent
-      logger.info('savedNote:', savedNote)
-      // here .toJSON will be used to get rid of _id and __v
-      res.json(savedNote)
-    })
-    .catch(err => next(err))
+  const savedNote = await note.save()
+
+  // here are _id and __v still existent
+  logger.info('savedNote:', savedNote)
+
+  // here .toJSON will be used to get rid of _id and __v
+  res.status(201).json(savedNote)
 })
 
-notesRouter.put('/:id', (req, res, next) => {
+notesRouter.put('/:id', async (req, res, ) => {
   const { id } = req.params
   const { content, important } = req.body
 
@@ -61,26 +69,18 @@ notesRouter.put('/:id', (req, res, next) => {
     content,
     important,
   }
-
   // validations are not run by default when findOneAndUpdate and related methods are executed -> add runValidators: true, context: 'query' to options
-  Note
-    .findByIdAndUpdate(id, note, { new: true, runValidators: true, context: 'query' })
-    .then(updatedNote => {
-      res.json(updatedNote)
-    })
-    .catch(err => next(err))
+  const updatedNote = await Note.findByIdAndUpdate(id, note, { new: true, runValidators: true, context: 'query' })
+
+  res.json(updatedNote)
 })
 
-notesRouter.delete('/:id', (req, res, next) => {
+notesRouter.delete('/:id', async (req, res) => {
   const id = req.params.id
 
-  Note
-    .findByIdAndDelete(id)
-    .then(deletionInfo => {
-      logger.info('deletionInfo:', deletionInfo)
-      res.status(204).end()
-    })
-    .catch(err => next(err))
+  await Note.findByIdAndDelete(id)
+
+  res.status(204).end()
 })
 
 // export

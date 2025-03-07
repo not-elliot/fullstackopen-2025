@@ -2,6 +2,7 @@
 const cors = require('cors')
 const mongoose = require('mongoose')
 const express = require('express')
+require('express-async-errors')
 
 // my module imports
 const config = require('./utils/config')
